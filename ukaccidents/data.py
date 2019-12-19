@@ -89,43 +89,16 @@ class DataProvider(object):
 
         self.start_date = dt.datetime.strptime(u'04/01/2005', "%d/%m/%Y")  #datetime.datetime(2005, 1, 4, 0, 0)
         self.end_date = dt.datetime.strptime(u'09/01/2005', "%d/%m/%Y")
-        
         self.start_casualties = 0
         self.end_casualties = self.get_max_casualties()
         
-        self.fetch_data()
-
-
-    def fetch_data(self):
-        print("in fetch_data")
-
-        data = self.df_acc[(self.df_acc.datetime>self.start_date) & (self.df_acc.datetime<self.end_date)].copy()
-        data.dropna(subset=["Longitude", "Latitude"], inplace=True)
-
-        print('data Shape is:{}'.format(data.shape))
-        print(data.iloc[1])
-
-        if not data.empty:
-            # Handling geometry
-            x, y = DataProvider.reproject(data[["Longitude", "Latitude"]])
-            data["x"] = x
-            data["y"] = y
-
-            # Saving data to internal containers
-            self.data = self.data.append(data[DataProvider.COLS], ignore_index=True)
-            self.data_ds.stream(data[DataProvider.COLS].to_dict(orient="list"))
-            #self.start_time = self.data["datetime"].max()
-        else:
-            self.data_ds.stream({cl: [] for cl in DataProvider.COLS})
-
-        # Calculating filters
         self.update_date_filter()
         self.update_casualities_filter()
-        
-        # Updating type stats
+        self.update_main_data()
         self.update_stats()
         
-    def replace_data(self):
+        
+    def update_main_data(self):
         filters = self.time_filter & self.casualities_filter
         data = self.df_acc[filters].copy()
         data.dropna(subset=["Longitude", "Latitude"], inplace=True)
@@ -155,7 +128,7 @@ class DataProvider(object):
         self.end_date = dt.datetime.fromtimestamp(new_dates_tuple[1] / 1e3) 
         self.update_date_filter()
         self.update_stats()
-        self.replace_data()
+        self.update_main_data()
         
     def set_casualties(self, new_casualties_tuple):
         """Update number of recent hours and corresponding views."""
@@ -165,7 +138,7 @@ class DataProvider(object):
         self.end_casualties = new_casualties_tuple[1]
         self.update_casualities_filter()
         self.update_stats()
-        self.replace_data()         
+        self.update_main_data()         
 
     def update_stats(self):
         print("in update_stats")
